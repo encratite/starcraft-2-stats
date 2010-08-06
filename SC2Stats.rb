@@ -1,10 +1,3 @@
-#http://eu.battle.net/sc2/en/profile/875156/1/MightyMike/ladder/3981#current-rank
-#http://eu.battle.net/sc2/en/profile/175968/1/Ouroboros/ladder/4062#current-rank
-
-require 'set'
-
-require 'nil/http'
-
 class SC2Stats
 	def initialize
 		cookies = {
@@ -102,6 +95,3 @@ class SC2Stats
 		end
 	end
 end
-
-stats = SC2Stats.new
-stats.processForumPage(1)
