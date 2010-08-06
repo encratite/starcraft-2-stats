@@ -1,9 +1,14 @@
+require 'SC2League'
+require 'SC2Team'
+require 'SC2Player'
+
 class SC2Stats
-	def initialize
+	def initialize(outputDirectory)
 		cookies = {
 			'perm' => 1,
 			'int-SC2' => 1
 		}
+		@outputDirectory = outputDirectory
 		@server = Nil::HTTP.new('eu.battle.net', cookies)
 		@profilePaths = Set.new
 		@leaguePaths = Set.new
