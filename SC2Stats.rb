@@ -1,3 +1,5 @@
+require 'thread'
+
 require 'SC2League'
 require 'SC2Team'
 require 'SC2Player'
@@ -11,7 +13,7 @@ class SC2Stats
 		@outputDirectory = outputDirectory
 		@server = Nil::HTTP.new('eu.battle.net', cookies)
 		@profilePaths = Set.new
-		@leaguePaths = Set.new
+		@mutex = mutex.new
 	end
 	
 	def getPath(path)
@@ -48,23 +50,28 @@ class SC2Stats
 		paths = Set.new
 		input.scan(pattern) do |match|
 			path = match[0]
-			if @profilePaths.include?(path)
-				next
+			@mutex.synchronized do
+				if @profilePaths.include?(path)
+					puts "Skipping profile #{path} because it has already been processed"
+					next
+				end
+				@profilePaths.add(path)
 			end
-			@profilePaths.add(path)
 			data = getPath(path)
 			processProfile(data)
 		end
 	end
 	
 	def processProfile(input)
-		pattern = /"(.+?)#current-rank"/
+		pattern = /"(.+?ladder\/(\d+))#current-rank"/
 		input.scan(pattern) do |match|
 			leaguePath = match[0]
-			if @leaguePaths.include?(leaguePath)
+			id = match[1]
+			outputPath = Nil.joinPaths(@outputDirectory, id)
+			if outputPath.exists?(outputPath)
+				puts "League data file #{outputPath} already exists"
 				next
 			end
-			@leaguePaths.add(leaguePath)
 			data = getPath(leaguePath)
 			processLeague(data)
 		end
@@ -79,9 +86,9 @@ class SC2Stats
 		end
 		id = match[1].to_i
 		mode = match[2].to_i
-		league = match[3]
+		level = match[3]
 		division = match[4]
-		puts "#{id}: #{mode}, #{league}, #{division}"
+		puts "League #{id}: #{mode}, #{level}, #{division}"
 		
 		pattern = /(<div id="player-info-(\d+)" style="display: none">[\s\S]+?<div class="tooltip-title">([A-Za-z0-9]+?)<\/div>[\s\S]+?<strong>Favorite Race:<\/strong> ([A-Za-z]+)[\s\S]+?)+?<td class="align-center">(\d+)<\/td>[\s\S]+?<td class="align-center">(\d+)<\/td>[\s\S]+?<td class="align-center">(\d+)<\/td>/
 		input.scan(pattern) do |match|
