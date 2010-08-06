@@ -1,5 +1,7 @@
 require 'thread'
 
+require 'nil/file'
+
 require 'SC2League'
 require 'SC2Team'
 require 'SC2Player'
@@ -26,6 +28,7 @@ class SC2Stats
 	end
 	
 	def getPage(page)
+		#multiplayer forums
 		path = "/sc2/en/forum/11818/?page=#{page}"
 		data = getPath(path)
 	end
@@ -65,19 +68,21 @@ class SC2Stats
 	def processProfile(input)
 		pattern = /"(.+?ladder\/(\d+))#current-rank"/
 		input.scan(pattern) do |match|
-			leaguePath = match[0]
+			divisionPath = match[0]
 			id = match[1]
 			outputPath = Nil.joinPaths(@outputDirectory, id)
 			if outputPath.exists?(outputPath)
 				puts "League data file #{outputPath} already exists"
 				next
 			end
-			data = getPath(leaguePath)
-			processLeague(data)
+			data = getPath(divisionPath)
+			division = processDivision(data)
+			serialised = Marshal.dump(division)
+			Nil.writeFile(outputPath, serialised)
 		end
 	end
 	
-	def processLeague(input)
+	def processDivision(input)
 		leaguePattern = /\/ladder\/(\d+)'\)[\s\S]+?(\d)v\d (.+?) <span>[\s\S]+?Division (.+?) <span>/
 		match = input.match(leaguePattern)
 		if match == nil
@@ -86,9 +91,11 @@ class SC2Stats
 		end
 		id = match[1].to_i
 		mode = match[2].to_i
-		level = match[3]
-		division = match[4]
-		puts "League #{id}: #{mode}, #{level}, #{division}"
+		league = match[3]
+		name = match[4]
+		puts "Division #{id}: #{mode}, #{league}, #{name}"
+		
+		division = SC2Division.new(mode, league, name)
 		
 		pattern = /(<div id="player-info-(\d+)" style="display: none">[\s\S]+?<div class="tooltip-title">([A-Za-z0-9]+?)<\/div>[\s\S]+?<strong>Favorite Race:<\/strong> ([A-Za-z]+)[\s\S]+?)+?<td class="align-center">(\d+)<\/td>[\s\S]+?<td class="align-center">(\d+)<\/td>[\s\S]+?<td class="align-center">(\d+)<\/td>/
 		input.scan(pattern) do |match|
@@ -97,13 +104,19 @@ class SC2Stats
 			losses = match[-1].to_i
 			puts "#{points} points, #{wins} wins, #{losses} losses"
 			offset = 0
+			team = SC2Team.new(points, wins, losses)
 			while offset < match.size - 3
 				id = match[offset + 1].to_i
 				name = match[offset + 2]
 				race = match[offset + 3]
 				offset += 1 + 3
 				puts "#{id}: #{name}, #{race}"
+				player = SC2Player.new(id, name, race)
+				team.players << player
 			end
+			division.teams << team
 		end
+		
+		return division
 	end
 end
