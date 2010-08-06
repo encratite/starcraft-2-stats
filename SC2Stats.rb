@@ -2,7 +2,7 @@ require 'thread'
 
 require 'nil/file'
 
-require 'SC2League'
+require 'SC2Division'
 require 'SC2Team'
 require 'SC2Player'
 
@@ -15,7 +15,7 @@ class SC2Stats
 		@outputDirectory = outputDirectory
 		@server = Nil::HTTP.new('eu.battle.net', cookies)
 		@profilePaths = Set.new
-		@mutex = mutex.new
+		@mutex = Mutex.new
 	end
 	
 	def getPath(path)
@@ -53,7 +53,7 @@ class SC2Stats
 		paths = Set.new
 		input.scan(pattern) do |match|
 			path = match[0]
-			@mutex.synchronized do
+			@mutex.synchronize do
 				if @profilePaths.include?(path)
 					puts "Skipping profile #{path} because it has already been processed"
 					next
@@ -71,7 +71,7 @@ class SC2Stats
 			divisionPath = match[0]
 			id = match[1]
 			outputPath = Nil.joinPaths(@outputDirectory, id)
-			if outputPath.exists?(outputPath)
+			if File.exists?(outputPath)
 				puts "League data file #{outputPath} already exists"
 				next
 			end
